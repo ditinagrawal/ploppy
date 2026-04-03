@@ -1,19 +1,15 @@
 import { cookies } from "next/headers";
-import { scalekit } from "./scalekit";
 
 export async function getSession() {
-  const session = await cookies()
-  const token = session.get("access_token")?.value
-  if (!token) {
+  const cookieStore = await cookies()
+  const userSession = cookieStore.get("user_session")?.value
+  if (!userSession) {
     return null
   }
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result: any = await scalekit.validateToken(token)
-    const user = await scalekit.user.getUser(result.sub)
-    return user
-  } catch (error) {
-    console.log(error)
+    const user = JSON.parse(userSession)
+    return { user: { id: user.id, email: user.email } }
+  } catch {
     return null
   }
 }
