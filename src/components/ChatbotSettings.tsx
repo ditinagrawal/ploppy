@@ -32,6 +32,8 @@ import {
   BookOpenIcon,
   CodeIcon,
   Trash2Icon,
+  GlobeIcon,
+  Loader2Icon,
 } from "lucide-react"
 
 type Chatbot = {
@@ -57,6 +59,9 @@ export function ChatbotSettings({ chatbotId }: { chatbotId: string }) {
   const [name, setName] = useState("")
   const [supportEmail, setSupportEmail] = useState("")
   const [knowledge, setKnowledge] = useState("")
+  const [scrapeUrl, setScrapeUrl] = useState("")
+  const [scraping, setScraping] = useState(false)
+  const [scrapeError, setScrapeError] = useState("")
 
   useEffect(() => {
     axios
@@ -103,6 +108,28 @@ export function ChatbotSettings({ chatbotId }: { chatbotId: string }) {
       console.error(error)
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const handleScrape = async () => {
+    if (!scrapeUrl.trim()) return
+    setScraping(true)
+    setScrapeError("")
+    try {
+      const res = await axios.post("/api/scrape", { url: scrapeUrl.trim() })
+      const scraped = res.data.content as string
+      if (scraped) {
+        setKnowledge((prev) => (prev ? prev + "\n\n" + scraped : scraped))
+        setScrapeUrl("")
+      }
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        setScrapeError(error.response?.data?.message || "Failed to scrape URL")
+      } else {
+        setScrapeError("Failed to scrape URL")
+      }
+    } finally {
+      setScraping(false)
     }
   }
 
@@ -211,6 +238,46 @@ export function ChatbotSettings({ chatbotId }: { chatbotId: string }) {
                   value={supportEmail}
                   onChange={(e) => setSupportEmail(e.target.value)}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="scrape-url">Import Knowledge from URL</Label>
+                <p className="text-xs text-muted-foreground">
+                  Enter a website URL to scrape its content and append it to the knowledge base
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    id="scrape-url"
+                    type="url"
+                    placeholder="https://example.com/about"
+                    value={scrapeUrl}
+                    onChange={(e) => {
+                      setScrapeUrl(e.target.value)
+                      setScrapeError("")
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && handleScrape()}
+                    disabled={scraping}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={handleScrape}
+                    disabled={scraping || !scrapeUrl.trim()}
+                  >
+                    {scraping ? (
+                      <>
+                        <Loader2Icon className="mr-2 size-4 animate-spin" />
+                        Scraping...
+                      </>
+                    ) : (
+                      <>
+                        <GlobeIcon className="mr-2 size-4" />
+                        Scrape
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {scrapeError && (
+                  <p className="text-xs text-destructive">{scrapeError}</p>
+                )}
               </div>
               <div className="flex items-center gap-3 pt-2">
                 <Button onClick={handleSave} disabled={saving}>
