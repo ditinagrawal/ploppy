@@ -1,23 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "Ploppy",
-  description: "the chatbot that you can embed in your website",
+  description:
+    "Create AI chatbots for your website with custom knowledge bases",
 };
 
 export default function RootLayout({
@@ -29,15 +21,12 @@ export default function RootLayout({
     <html lang="en" className={cn("font-sans", inter.variable)}>
       <head>
         <script
-          defer
           src="http://localhost:3000/chatBot.js"
-          data-owner-id="usr_114174448445162754"
+          data-chatbot-id="80997bb9-9873-4d40-a7e6-8d7d5df6ff9d"
         ></script>
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className="antialiased" suppressHydrationWarning>
+        <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>
   );

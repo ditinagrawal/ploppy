@@ -1,15 +1,18 @@
-import DashboardClient from '@/components/DashboardClient'
-import { getSession } from '@/lib/getSession'
-import React from 'react'
+import { DashboardOverview } from "@/components/DashboardOverview"
+import { SidebarTrigger } from "@/components/ui/sidebar"
+import { Separator } from "@/components/ui/separator"
 
-async function page() {
-    const session=await getSession()
-       
+export default function DashboardPage() {
   return (
     <>
-      <DashboardClient ownerId={session?.user?.id!}/>
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+        <SidebarTrigger />
+        <Separator orientation="vertical" className="mr-2 h-4" />
+        <h1 className="text-sm font-medium">Dashboard</h1>
+      </header>
+      <div className="flex flex-1 flex-col">
+        <DashboardOverview />
+      </div>
     </>
   )
 }
-
-export default page

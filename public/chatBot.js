@@ -1,14 +1,16 @@
 (function () {
-  const api_Url = "http://localhost:3000/api/chat";
-
   const scriptTag = document.currentScript;
-  const ownerId = scriptTag.getAttribute("data-owner-id");
+  const chatbotId = scriptTag && scriptTag.getAttribute("data-chatbot-id");
+  const ownerId = scriptTag && scriptTag.getAttribute("data-owner-id");
+  const baseUrl = scriptTag ? scriptTag.src.replace("/chatBot.js", "") : "";
+  const api_Url = baseUrl + "/api/chat";
 
-  if (!ownerId) {
-    console.log("owner id not found");
+  if (!chatbotId && !ownerId) {
+    console.log("data-chatbot-id or data-owner-id is required");
     return;
   }
 
+  function init() {
   const button = document.createElement("div");
   button.innerHTML = "🗨️";
 
@@ -158,6 +160,7 @@
         method: "POST",
         headers: { "content-Type": "application/json" },
         body: JSON.stringify({
+          chatbotId,
           ownerId,
           message: text,
         }),
@@ -169,7 +172,14 @@
     } catch (error) {
       console.log(error);
       messageArea.removeChild(typing);
-      addMessage(data || "something went wrong", "ai");
+      addMessage("something went wrong", "ai");
     }
   };
+  } // end init()
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 })();

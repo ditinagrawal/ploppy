@@ -1,33 +1,58 @@
 import db from "@/lib/db";
 import { settings } from "@/model/settings.model";
+import { chatbots } from "@/model/chatbot.model";
 import { eq } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
     try {
-        const { message, ownerId } = await req.json()
-        if (!message || !ownerId) {
+        const { message, ownerId, chatbotId } = await req.json()
+        if (!message || (!ownerId && !chatbotId)) {
             return NextResponse.json(
-                { message: "message and owner id is required" },
-                { status: 400 }
-            )
-        }
-        const [setting] = await db
-            .select()
-            .from(settings)
-            .where(eq(settings.ownerId, ownerId))
-        if (!setting) {
-            return NextResponse.json(
-                { message: "chat bot is not configured yet." },
+                { message: "message and ownerId or chatbotId is required" },
                 { status: 400 }
             )
         }
 
+        let businessName = ""
+        let supportEmail = ""
+        let knowledge = ""
+
+        if (chatbotId) {
+            const [chatbot] = await db
+                .select()
+                .from(chatbots)
+                .where(eq(chatbots.id, chatbotId))
+            if (!chatbot) {
+                return NextResponse.json(
+                    { message: "chatbot not found." },
+                    { status: 400 }
+                )
+            }
+            businessName = chatbot.name || ""
+            supportEmail = chatbot.supportEmail || ""
+            knowledge = chatbot.knowledge || ""
+        } else {
+            const [setting] = await db
+                .select()
+                .from(settings)
+                .where(eq(settings.ownerId, ownerId))
+            if (!setting) {
+                return NextResponse.json(
+                    { message: "chat bot is not configured yet." },
+                    { status: 400 }
+                )
+            }
+            businessName = setting.businessName || ""
+            supportEmail = setting.supportEmail || ""
+            knowledge = setting.knowledge || ""
+        }
+
         const KNOWLEDGE = `
-        business name- ${setting.businessName || "not provided"}
-        supportEmail- ${setting.supportEmail || "not provided"}
-        knowledge- ${setting.knowledge || " not provided"}
+        business name- ${businessName || "not provided"}
+        supportEmail- ${supportEmail || "not provided"}
+        knowledge- ${knowledge || "not provided"}
         `
 
         const prompt = `
