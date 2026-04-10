@@ -17,7 +17,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BotIcon, PlusIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { BotIcon, PlusIcon, SparklesIcon, ZapIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import {
@@ -39,18 +40,33 @@ type Chatbot = {
   updatedAt: string;
 };
 
+type BillingInfo = {
+  plan: "free" | "pro";
+  chatbotCount: number;
+  limit: number | null;
+  canCreate: boolean;
+};
+
 export function DashboardOverview() {
   const router = useRouter();
   const [chatbots, setChatbots] = useState<Chatbot[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
+  const [billing, setBilling] = useState<BillingInfo | null>(null);
 
   useEffect(() => {
-    axios
-      .get("/api/chatbots")
-      .then((res) => setChatbots(res.data))
+    Promise.all([
+      axios.get("/api/chatbots"),
+      axios.get("/api/billing"),
+    ])
+      .then(([botsRes, billingRes]) => {
+        setChatbots(botsRes.data);
+        setBilling(billingRes.data);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -64,9 +80,32 @@ export function DashboardOverview() {
       setNewName("");
       router.push(`/dashboard/${res.data.id}`);
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data?.limitReached) {
+        setCreateOpen(false);
+        setUpgradeOpen(true);
+      }
       console.error(error);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleNewChatbotClick = () => {
+    if (billing && !billing.canCreate) {
+      setUpgradeOpen(true);
+    } else {
+      setCreateOpen(true);
+    }
+  };
+
+  const handleUpgrade = async () => {
+    setUpgrading(true);
+    try {
+      const res = await axios.post("/api/billing/checkout");
+      window.location.href = res.data.url;
+    } catch (error) {
+      console.error(error);
+      setUpgrading(false);
     }
   };
 
@@ -109,40 +148,27 @@ export function DashboardOverview() {
               support on your website.
             </EmptyDescription>
           </EmptyHeader>
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button onClick={handleNewChatbotClick}>
             <PlusIcon className="mr-2 size-4" />
             Create Chatbot
           </Button>
         </Empty>
 
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Chatbot</DialogTitle>
-              <DialogDescription>
-                Give your chatbot a name. You can configure its knowledge base
-                after creation.
-              </DialogDescription>
-            </DialogHeader>
-            <Input
-              placeholder="e.g. My Store Support"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            />
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreate}
-                disabled={creating || !newName.trim()}
-              >
-                {creating ? "Creating..." : "Create"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <CreateDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          newName={newName}
+          setNewName={setNewName}
+          creating={creating}
+          onCreate={handleCreate}
+        />
+
+        <UpgradeDialog
+          open={upgradeOpen}
+          onOpenChange={setUpgradeOpen}
+          upgrading={upgrading}
+          onUpgrade={handleUpgrade}
+        />
       </div>
     );
   }
@@ -150,15 +176,29 @@ export function DashboardOverview() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">
-            Your Chatbots
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Manage your AI chatbots and their knowledge bases
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">
+              Your Chatbots
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Manage your AI chatbots and their knowledge bases
+            </p>
+          </div>
+          {billing && (
+            <Badge variant={billing.plan === "pro" ? "default" : "secondary"}>
+              {billing.plan === "pro" ? (
+                <>
+                  <SparklesIcon className="mr-1 size-3" />
+                  Pro
+                </>
+              ) : (
+                `${billing.chatbotCount}/${billing.limit} chatbots`
+              )}
+            </Badge>
+          )}
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button onClick={handleNewChatbotClick}>
           <PlusIcon className="mr-2 size-4" />
           New Chatbot
         </Button>
@@ -192,34 +232,110 @@ export function DashboardOverview() {
         ))}
       </div>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Chatbot</DialogTitle>
-            <DialogDescription>
-              Give your chatbot a name. You can configure its knowledge base
-              after creation.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            placeholder="e.g. My Store Support"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreate}
-              disabled={creating || !newName.trim()}
-            >
-              {creating ? "Creating..." : "Create"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        newName={newName}
+        setNewName={setNewName}
+        creating={creating}
+        onCreate={handleCreate}
+      />
+
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        upgrading={upgrading}
+        onUpgrade={handleUpgrade}
+      />
     </div>
+  );
+}
+
+function CreateDialog({
+  open,
+  onOpenChange,
+  newName,
+  setNewName,
+  creating,
+  onCreate,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  newName: string;
+  setNewName: (v: string) => void;
+  creating: boolean;
+  onCreate: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create Chatbot</DialogTitle>
+          <DialogDescription>
+            Give your chatbot a name. You can configure its knowledge base
+            after creation.
+          </DialogDescription>
+        </DialogHeader>
+        <Input
+          placeholder="e.g. My Store Support"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && onCreate()}
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={onCreate} disabled={creating || !newName.trim()}>
+            {creating ? "Creating..." : "Create"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function UpgradeDialog({
+  open,
+  onOpenChange,
+  upgrading,
+  onUpgrade,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  upgrading: boolean;
+  onUpgrade: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ZapIcon className="size-5 text-yellow-500" />
+            Upgrade to Pro
+          </DialogTitle>
+          <DialogDescription>
+            You&apos;ve reached the 3 chatbot limit on the free plan. Upgrade to Pro
+            for unlimited chatbots, priority support, and more.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="rounded-lg border p-4 space-y-2 bg-muted/30">
+          <p className="text-sm font-medium">Pro plan includes:</p>
+          <ul className="text-sm text-muted-foreground space-y-1">
+            <li>✓ Unlimited chatbots</li>
+            <li>✓ Unlimited chat sessions</li>
+            <li>✓ Priority support</li>
+          </ul>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Maybe later
+          </Button>
+          <Button onClick={onUpgrade} disabled={upgrading}>
+            {upgrading ? "Redirecting..." : "Upgrade to Pro"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

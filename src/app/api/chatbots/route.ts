@@ -1,7 +1,8 @@
 import db from "@/lib/db";
 import { chatbots } from "@/model/chatbot.model";
 import { getSession } from "@/lib/getSession";
-import { eq } from "drizzle-orm";
+import { getPlan, FREE_LIMIT } from "@/lib/getPlan";
+import { eq, count } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/chatbots — list all chatbots for the logged-in user
@@ -47,6 +48,24 @@ export async function POST(req: NextRequest) {
         { message: "Chatbot name is required" },
         { status: 400 }
       );
+    }
+
+    // Enforce free plan limit
+    const plan = await getPlan(session.user.id);
+    if (plan === "free") {
+      const [{ value: chatbotCount }] = await db
+        .select({ value: count() })
+        .from(chatbots)
+        .where(eq(chatbots.ownerId, session.user.id));
+      if (Number(chatbotCount) >= FREE_LIMIT) {
+        return NextResponse.json(
+          {
+            message: `Free plan limit reached (${FREE_LIMIT} chatbots). Upgrade to Pro to create more.`,
+            limitReached: true,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const [chatbot] = await db

@@ -38,6 +38,8 @@ import {
   LogOutIcon,
   PlusIcon,
   SettingsIcon,
+  SparklesIcon,
+  ZapIcon,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import axios from "axios"
@@ -62,6 +64,7 @@ export function AppSidebar({ user }: { user: { email: string; id: string } | nul
   const [creating, setCreating] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [plan, setPlan] = useState<"free" | "pro" | null>(null)
 
   const fetchChatbots = async () => {
     try {
@@ -76,6 +79,7 @@ export function AppSidebar({ user }: { user: { email: string; id: string } | nul
 
   useEffect(() => {
     fetchChatbots()
+    axios.get("/api/billing").then((res) => setPlan(res.data.plan)).catch(() => {})
   }, [])
 
   const handleCreate = async () => {
@@ -199,6 +203,9 @@ export function AppSidebar({ user }: { user: { email: string; id: string } | nul
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-medium">{user?.email ?? "User"}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {plan === "pro" ? "Pro plan" : "Free plan"}
+                      </span>
                     </div>
                     <ChevronsUpDownIcon className="ml-auto size-4" />
                   </SidebarMenuButton>
@@ -212,6 +219,25 @@ export function AppSidebar({ user }: { user: { email: string; id: string } | nul
                     <SettingsIcon className="mr-2 size-4" />
                     Home
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {plan === "pro" ? (
+                    <DropdownMenuItem
+                      onClick={() => window.location.href = "/api/billing/portal"}
+                    >
+                      <SparklesIcon className="mr-2 size-4" />
+                      Manage Billing
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        const res = await axios.post("/api/billing/checkout")
+                        window.location.href = res.data.url
+                      }}
+                    >
+                      <ZapIcon className="mr-2 size-4 text-yellow-500" />
+                      Upgrade to Pro
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOutIcon className="mr-2 size-4" />
