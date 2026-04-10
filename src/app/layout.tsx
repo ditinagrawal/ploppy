@@ -25,7 +25,7 @@ export default function RootLayout({
           data-chatbot-id="80997bb9-9873-4d40-a7e6-8d7d5df6ff9d"
         ></script> */}
         <script
-          src="http://localhost:3000/chatBot.js"
+          src="https://ploppy.vercel.app/chatBot.js"
           data-chatbot-id="c3b2094e-0739-4ccf-a080-3bbda744c839"
         ></script>
       </head>
