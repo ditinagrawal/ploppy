@@ -10,6 +10,10 @@
     return;
   }
 
+  // Persist session ID in localStorage so conversations are tracked across page reloads
+  const SESSION_KEY = chatbotId ? "ploppy_session_" + chatbotId : null;
+  let currentSessionId = SESSION_KEY ? localStorage.getItem(SESSION_KEY) : null;
+
   function init() {
   const button = document.createElement("div");
   button.innerHTML = "🗨️";
@@ -79,7 +83,7 @@
       padding:8px;
       gap:6px;
     ">
-    <input id="chat-input" type:"text" 
+    <input id="chat-input" type:"text"
     style="
           flex:1;
           padding:8px 10px;
@@ -98,7 +102,7 @@
           cursor:pointer;
         ">send</button>
     </div>
-    
+
     `;
 
   document.body.appendChild(box);
@@ -163,12 +167,20 @@
           chatbotId,
           ownerId,
           message: text,
+          sessionId: currentSessionId,
         }),
       });
 
       const data = await response.json();
       messageArea.removeChild(typing);
-      addMessage(data || "something went wrong", "ai");
+
+      // Persist the session ID returned from the server
+      if (data.sessionId && SESSION_KEY) {
+        currentSessionId = data.sessionId;
+        localStorage.setItem(SESSION_KEY, currentSessionId);
+      }
+
+      addMessage(data.response || "something went wrong", "ai");
     } catch (error) {
       console.log(error);
       messageArea.removeChild(typing);

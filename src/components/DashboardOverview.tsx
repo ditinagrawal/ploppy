@@ -1,25 +1,25 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@/components/ui/empty"
-import { Skeleton } from "@/components/ui/skeleton"
-import { BotIcon, PlusIcon } from "lucide-react"
-import { useEffect, useState } from "react"
-import axios from "axios"
+} from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BotIcon, PlusIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import {
   Dialog,
   DialogContent,
@@ -27,48 +27,48 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 type Chatbot = {
-  id: string
-  name: string
-  supportEmail: string | null
-  knowledge: string | null
-  createdAt: string
-  updatedAt: string
-}
+  id: string;
+  name: string;
+  supportEmail: string | null;
+  knowledge: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export function DashboardOverview() {
-  const router = useRouter()
-  const [chatbots, setChatbots] = useState<Chatbot[]>([])
-  const [loading, setLoading] = useState(true)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [newName, setNewName] = useState("")
-  const [creating, setCreating] = useState(false)
+  const router = useRouter();
+  const [chatbots, setChatbots] = useState<Chatbot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     axios
       .get("/api/chatbots")
       .then((res) => setChatbots(res.data))
       .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleCreate = async () => {
-    if (!newName.trim()) return
-    setCreating(true)
+    if (!newName.trim()) return;
+    setCreating(true);
     try {
-      const res = await axios.post("/api/chatbots", { name: newName.trim() })
-      setCreateOpen(false)
-      setNewName("")
-      router.push(`/dashboard/${res.data.id}`)
+      const res = await axios.post("/api/chatbots", { name: newName.trim() });
+      setCreateOpen(false);
+      setNewName("");
+      router.push(`/dashboard/${res.data.id}`);
     } catch (error) {
-      console.error(error)
+      console.error(error);
     } finally {
-      setCreating(false)
+      setCreating(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -92,7 +92,7 @@ export function DashboardOverview() {
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   if (chatbots.length === 0) {
@@ -144,14 +144,16 @@ export function DashboardOverview() {
           </DialogContent>
         </Dialog>
       </div>
-    )
+    );
   }
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">Your Chatbots</h2>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Your Chatbots
+          </h2>
           <p className="text-sm text-muted-foreground">
             Manage your AI chatbots and their knowledge bases
           </p>
@@ -181,7 +183,8 @@ export function DashboardOverview() {
             <CardContent>
               <p className="text-xs text-muted-foreground line-clamp-2">
                 {bot.knowledge
-                  ? bot.knowledge.substring(0, 120) + (bot.knowledge.length > 120 ? "..." : "")
+                  ? bot.knowledge.substring(0, 120) +
+                    (bot.knowledge.length > 120 ? "..." : "")
                   : "No knowledge base added yet"}
               </p>
             </CardContent>
@@ -218,5 +221,5 @@ export function DashboardOverview() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

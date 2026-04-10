@@ -34,6 +34,9 @@ import {
   Trash2Icon,
   GlobeIcon,
   Loader2Icon,
+  MessageSquareIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from "lucide-react"
 
 type Chatbot = {
@@ -44,6 +47,22 @@ type Chatbot = {
   knowledge: string | null
   createdAt: string
   updatedAt: string
+}
+
+type ChatSession = {
+  id: string
+  chatbotId: string
+  createdAt: string
+  updatedAt: string
+  messageCount: number
+}
+
+type Message = {
+  id: string
+  sessionId: string
+  role: "user" | "assistant"
+  content: string
+  createdAt: string
 }
 
 export function ChatbotSettings({ chatbotId }: { chatbotId: string }) {
@@ -62,6 +81,12 @@ export function ChatbotSettings({ chatbotId }: { chatbotId: string }) {
   const [scrapeUrl, setScrapeUrl] = useState("")
   const [scraping, setScraping] = useState(false)
   const [scrapeError, setScrapeError] = useState("")
+
+  const [sessions, setSessions] = useState<ChatSession[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [expandedSession, setExpandedSession] = useState<string | null>(null)
+  const [sessionMessages, setSessionMessages] = useState<Record<string, Message[]>>({})
+  const [loadingMessages, setLoadingMessages] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     axios
@@ -108,6 +133,36 @@ export function ChatbotSettings({ chatbotId }: { chatbotId: string }) {
       console.error(error)
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const fetchSessions = async () => {
+    setSessionsLoading(true)
+    try {
+      const res = await axios.get(`/api/chatbots/${chatbotId}/sessions`)
+      setSessions(res.data)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setSessionsLoading(false)
+    }
+  }
+
+  const toggleSession = async (sessionId: string) => {
+    if (expandedSession === sessionId) {
+      setExpandedSession(null)
+      return
+    }
+    setExpandedSession(sessionId)
+    if (sessionMessages[sessionId]) return
+    setLoadingMessages((prev) => ({ ...prev, [sessionId]: true }))
+    try {
+      const res = await axios.get(`/api/chatbots/${chatbotId}/sessions/${sessionId}`)
+      setSessionMessages((prev) => ({ ...prev, [sessionId]: res.data.messages }))
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setLoadingMessages((prev) => ({ ...prev, [sessionId]: false }))
     }
   }
 
@@ -208,6 +263,10 @@ export function ChatbotSettings({ chatbotId }: { chatbotId: string }) {
           <TabsTrigger value="embed">
             <CodeIcon className="mr-1.5 size-3.5" />
             Embed
+          </TabsTrigger>
+          <TabsTrigger value="chats" onClick={fetchSessions}>
+            <MessageSquareIcon className="mr-1.5 size-3.5" />
+            Chats
           </TabsTrigger>
         </TabsList>
 
@@ -417,6 +476,99 @@ export function ChatbotSettings({ chatbotId }: { chatbotId: string }) {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="chats">
+          <Card>
+            <CardHeader>
+              <CardTitle>Chat Sessions</CardTitle>
+              <CardDescription>
+                Conversations visitors have had with your chatbot
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {sessionsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-14 w-full" />
+                  ))}
+                </div>
+              ) : sessions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <MessageSquareIcon className="size-10 text-muted-foreground/40 mb-3" />
+                  <p className="text-sm text-muted-foreground">No conversations yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Chats from your embedded widget will appear here
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sessions.map((session) => (
+                    <div key={session.id} className="border rounded-lg overflow-hidden">
+                      <button
+                        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleSession(session.id)}
+                      >
+                        <div className="flex items-center gap-3">
+                          {expandedSession === session.id ? (
+                            <ChevronDownIcon className="size-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronRightIcon className="size-4 text-muted-foreground" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">
+                              Session{" "}
+                              <span className="font-mono text-xs text-muted-foreground">
+                                {session.id.slice(0, 8)}…
+                              </span>
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(session.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary">
+                          {session.messageCount} message{session.messageCount !== 1 ? "s" : ""}
+                        </Badge>
+                      </button>
+
+                      {expandedSession === session.id && (
+                        <div className="border-t bg-muted/20 p-4 space-y-3">
+                          {loadingMessages[session.id] ? (
+                            <div className="space-y-2">
+                              <Skeleton className="h-8 w-3/4" />
+                              <Skeleton className="h-8 w-1/2 ml-auto" />
+                            </div>
+                          ) : (sessionMessages[session.id] || []).length === 0 ? (
+                            <p className="text-xs text-muted-foreground">No messages</p>
+                          ) : (
+                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                              {(sessionMessages[session.id] || []).map((msg) => (
+                                <div
+                                  key={msg.id}
+                                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                                >
+                                  <div
+                                    className={`max-w-[80%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
+                                      msg.role === "user"
+                                        ? "bg-primary text-primary-foreground rounded-tr-sm"
+                                        : "bg-muted text-foreground rounded-tl-sm"
+                                    }`}
+                                  >
+                                    {msg.content}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
