@@ -188,8 +188,9 @@ export function ChatbotSettings({ chatbotId }: { chatbotId: string }) {
     }
   }
 
+  const appUrl = typeof window !== "undefined" ? window.location.origin : ""
   const embedCode = `<script
-  src="${process.env.NEXT_PUBLIC_APP_URL || "https://yoursite.com"}/chatBot.js"
+  src="${appUrl}/chatBot.js"
   data-chatbot-id="${chatbotId}">
 </script>`
 
