@@ -26,7 +26,7 @@ export default function RootLayout({
         ></script> */}
         <script
           src="https://ploppy.vercel.app/chatBot.js"
-          data-chatbot-id="c3b2094e-0739-4ccf-a080-3bbda744c839"
+          data-chatbot-id="5335babb-8ed8-44ad-885f-2ba81c0326ac"
         ></script>
       </head>
       <body className="antialiased" suppressHydrationWarning>
